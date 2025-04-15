@@ -25,7 +25,7 @@ font = pygame.font.SysFont(None, 36)
 # Khởi tạo board
 board = chess.Board()
 
-# -------------------- LOAD ẢNH --------------------
+#LOAD ẢNH
 def load_piece_images(path):
     images = {}
     piece_names = {
@@ -70,7 +70,7 @@ victory_images = {
     )
 }
 
-# -------------------- START MENU (CHỌN CHẾ ĐỘ) --------------------
+#START MENU (CHỌN CHẾ ĐỘ)
 menu_background = pygame.transform.scale(
     pygame.image.load(os.path.join("img", "menu.png")), (WINDOW_WIDTH, WINDOW_HEIGHT)
 )
@@ -91,7 +91,7 @@ def draw_start_menu():
     screen.blit(title, title_rect)
     pygame.display.flip()
 
-# -------------------- HÀM VẼ TRONG GAME --------------------
+#  HÀM VẼ TRONG GAME 
 def draw_board(screen, selected_square, tile_size, white, black, highlight, offset=(0,0)):
     for row in range(8):
         for col in range(8):
@@ -264,7 +264,7 @@ def select_or_move_piece(row, col):
         except chess.InvalidMoveError:
             print("Invalid move UCI:", move_uci)
 
-# -------------------- MAIN LOOP (STATE MACHINE) --------------------
+#  MAIN LOOP (STATE MACHINE) 
 state = "start_menu"  # Các trạng thái: "start_menu" và "game"
 running = True
 
@@ -272,7 +272,7 @@ running = True
 confirm_action = None
 
 while running:
-    # -------------------- START MENU --------------------
+    #  START MENU 
     if state == "start_menu":
         draw_start_menu()
         for event in pygame.event.get():
@@ -289,7 +289,7 @@ while running:
                     state = "game"
         pygame.display.flip()
     
-    # -------------------- GAME LOOP --------------------
+    #  GAME LOOP 
     elif state == "game":
         pause_menu_active = False
         game_over = False
