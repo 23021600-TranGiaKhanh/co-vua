@@ -42,40 +42,70 @@ def load_piece_images(path):
         )
     return images
 
-pieces_img = load_piece_images("img")
+pieces_img = load_piece_images("assets/img")
 
 # Các icon trên thanh bar (loại bỏ nút Exit)
 icons = {
     "hamburger": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "hamburger_button.png")), (40, 30)
+        pygame.image.load(os.path.join("assets/img", "hamburger_button.png")), (40, 30)
     ),
     "undo": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "undo.png")), (40, 30)
+        pygame.image.load(os.path.join("assets/img", "undo.png")), (40, 30)
     ),
     "redo": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "redo.png")), (40, 30)
+        pygame.image.load(os.path.join("assets/img", "redo.png")), (40, 30)
     )
 }
 
 # Load hình ảnh chiến thắng/hòa (nếu cần)
 victory_images = {
     "white": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "trang_thang.png")), (300, 200)
+        pygame.image.load(os.path.join("assets/img", "trang_thang.png")), (300, 200)
     ),
     "black": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "den_thang.png")), (300, 200)
+        pygame.image.load(os.path.join("assets/img", "den_thang.png")), (300, 200)
     ),
     "stalemate": pygame.transform.scale(
-        pygame.image.load(os.path.join("img", "stalemate.png")), (300, 200)
+        pygame.image.load(os.path.join("assets/img", "stalemate.png")), (300, 200)
     )
 }
 
+checkmate_sound = False
+def play_sound_checkmate():
+    pygame.mixer.music.load("assets/sound/sound_checkmate.ogg")  # Đổi đường dẫn nếu khác
+    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.play()
+
+eat_capture = False
+def play_sound_capture():
+    pygame.mixer.music.load("assets/sound/sound_capture.ogg")  # Đổi đường dẫn nếu khác
+    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.play()
+
+move_sound = False
+def play_sound_move():
+    pygame.mixer.music.load("assets/sound/sound_move.ogg")  # Đổi đường dẫn nếu khác
+    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.play()
+    
+finish_sound = False
+def play_sound_finish():
+    pygame.mixer.music.load("assets/sound/sound_finish.ogg")  # Đổi đường dẫn nếu khác
+    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.play()    
+    
+menu_music_playing = False
+def play_menu_music():
+    pygame.mixer.music.load("assets/sound/sound_game.ogg")  # Đổi đường dẫn nếu khác
+    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.play(-1)  # -1 để phát lặp lại vô hạn
+
 #START MENU (CHỌN CHẾ ĐỘ)
 menu_background = pygame.transform.scale(
-    pygame.image.load(os.path.join("img", "menu.png")), (WINDOW_WIDTH, WINDOW_HEIGHT)
+    pygame.image.load(os.path.join("assets/img", "menu2.png")), (WINDOW_WIDTH, WINDOW_HEIGHT)
 )
-one_player_img = pygame.image.load(os.path.join("img", "1p.png"))
-two_player_img = pygame.image.load(os.path.join("img", "2p.png"))
+one_player_img = pygame.image.load(os.path.join("assets/img", "1p.png"))
+two_player_img = pygame.image.load(os.path.join("assets/img", "2p.png"))
 one_player_img = pygame.transform.scale(one_player_img, (150, 50))
 two_player_img = pygame.transform.scale(two_player_img, (150, 50))
 
@@ -244,7 +274,7 @@ def select_or_move_piece(row, col):
     global selected_square
     clicked_sq_name = square_name_from_pos(row, col)
     clicked_piece = board.piece_at(chess.parse_square(clicked_sq_name))
-    
+
     if selected_square is None:
         if clicked_piece and ((board.turn and clicked_piece.color == chess.WHITE) or (not board.turn and clicked_piece.color == chess.BLACK)):
             selected_square = (row, col)
@@ -255,7 +285,16 @@ def select_or_move_piece(row, col):
         try:
             move = chess.Move.from_uci(move_uci)
             if move in board.legal_moves:
+                is_capture = board.is_capture(move)
                 board.push(move)
+
+                if board.is_check():
+                    play_sound_checkmate()
+                elif is_capture:
+                    play_sound_capture()
+                else:
+                    play_sound_move()
+
                 selected_square = None
             else:
                 print("Nước đi không hợp lệ!")
@@ -263,6 +302,7 @@ def select_or_move_piece(row, col):
                     selected_square = (row, col)
         except chess.InvalidMoveError:
             print("Invalid move UCI:", move_uci)
+
 
 #  MAIN LOOP (STATE MACHINE) 
 state = "start_menu"  # Các trạng thái: "start_menu" và "game"
@@ -274,7 +314,12 @@ confirm_action = None
 while running:
     #  START MENU 
     if state == "start_menu":
+        if not menu_music_playing:
+            play_menu_music()
+            menu_music_playing = True
+
         draw_start_menu()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -283,6 +328,8 @@ while running:
                 if one_player_rect.collidepoint(pos):
                     print("Chế độ 1 người chơi chưa được xử lý.")
                 elif two_player_rect.collidepoint(pos):
+                    pygame.mixer.music.stop()
+                    menu_music_playing = False
                     board.reset()
                     selected_square = None
                     undone_moves = []
@@ -298,6 +345,12 @@ while running:
             if confirm_action is None:
                 if board.is_game_over() and not game_over:
                     game_over = True
+                    outcome = board.outcome()
+                    if outcome is not None:
+                        if outcome.winner is True:
+                            play_sound_finish()
+                        elif outcome.winner is False:
+                            play_sound_finish()    
                 if game_over:
                     draw_board(screen, None, TILE_SIZE, WHITE, BLACK, HIGHLIGHT, offset=(0, TOP_MARGIN))
                     draw_pieces(screen, board, pieces_img, offset=(0, TOP_MARGIN))
