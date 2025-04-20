@@ -2,11 +2,14 @@ import pygame
 import sys
 import os
 import chess
+import torch
 
-# Khởi tạo Pygame và cài đặt kích thước cửa sổ
+from ai_engine import ChessAI, predict_move, all_moves
+from config import TRAINING_PGN_PATH, WEIGHTS_PATH  # Sử dụng biến từ config.py
+
 pygame.init()
 TILE_SIZE = 80
-TOP_MARGIN = 50  # Khoảng cách từ trên xuống (dành cho thanh bar)
+TOP_MARGIN = 50
 BOARD_SIZE = TILE_SIZE * 8
 WINDOW_WIDTH = BOARD_SIZE
 WINDOW_HEIGHT = BOARD_SIZE + TOP_MARGIN
@@ -14,7 +17,6 @@ WINDOW_HEIGHT = BOARD_SIZE + TOP_MARGIN
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Chess Game")
 
-# Định nghĩa màu sắc và font
 WHITE = (240, 217, 181)
 BLACK = (100, 100, 100)
 HIGHLIGHT = (0, 255, 0)
@@ -22,10 +24,14 @@ MENU_BG = (180, 180, 180)
 RED = (255, 0, 0)
 font = pygame.font.SysFont(None, 36)
 
-# Khởi tạo board
 board = chess.Board()
 
-#LOAD ẢNH
+# Các biến xử lý chế độ chơi
+one_player_mode = False
+human_color = None
+ai_color = None
+ai_model = None
+
 def load_piece_images(path):
     images = {}
     piece_names = {
@@ -36,79 +42,53 @@ def load_piece_images(path):
     }
     for piece, filename in piece_names.items():
         img_fullpath = os.path.join(path, filename)
-        images[piece] = pygame.transform.scale(
-            pygame.image.load(img_fullpath),
-            (TILE_SIZE, TILE_SIZE)
-        )
+        images[piece] = pygame.transform.scale(pygame.image.load(img_fullpath), (TILE_SIZE, TILE_SIZE))
     return images
 
 pieces_img = load_piece_images("assets/img")
 
-# Các icon trên thanh bar (loại bỏ nút Exit)
 icons = {
-    "hamburger": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "hamburger_button.png")), (40, 30)
-    ),
-    "undo": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "undo.png")), (40, 30)
-    ),
-    "redo": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "redo.png")), (40, 30)
-    )
+    "hamburger": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "hamburger_button.png")), (40, 30)),
+    "undo": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "undo.png")), (40, 30)),
+    "redo": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "redo.png")), (40, 30))
 }
 
-# Load hình ảnh chiến thắng/hòa (nếu cần)
 victory_images = {
-    "white": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "trang_thang.png")), (300, 200)
-    ),
-    "black": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "den_thang.png")), (300, 200)
-    ),
-    "stalemate": pygame.transform.scale(
-        pygame.image.load(os.path.join("assets/img", "stalemate.png")), (300, 200)
-    )
+    "white": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "trang_thang.png")), (300, 200)),
+    "black": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "den_thang.png")), (300, 200)),
+    "stalemate": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "stalemate.png")), (300, 200))
 }
 
-checkmate_sound = False
 def play_sound_checkmate():
-    pygame.mixer.music.load("assets/sound/sound_checkmate.ogg")  # Đổi đường dẫn nếu khác
-    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.load("assets/sound/sound_checkmate.ogg")
+    pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play()
 
-eat_capture = False
 def play_sound_capture():
-    pygame.mixer.music.load("assets/sound/sound_capture.ogg")  # Đổi đường dẫn nếu khác
-    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.load("assets/sound/sound_capture.ogg")
+    pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play()
 
-move_sound = False
 def play_sound_move():
-    pygame.mixer.music.load("assets/sound/sound_move.ogg")  # Đổi đường dẫn nếu khác
-    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.load("assets/sound/sound_move.ogg")
+    pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play()
     
-finish_sound = False
 def play_sound_finish():
-    pygame.mixer.music.load("assets/sound/sound_finish.ogg")  # Đổi đường dẫn nếu khác
-    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
+    pygame.mixer.music.load("assets/sound/sound_finish.ogg")
+    pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play()    
     
-menu_music_playing = False
 def play_menu_music():
-    pygame.mixer.music.load("assets/sound/sound_game.ogg")  # Đổi đường dẫn nếu khác
-    pygame.mixer.music.set_volume(0.5)  # Âm lượng từ 0.0 đến 1.0
-    pygame.mixer.music.play(-1)  # -1 để phát lặp lại vô hạn
+    pygame.mixer.music.load("assets/sound/sound_game.ogg")
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
 
-#START MENU (CHỌN CHẾ ĐỘ)
-menu_background = pygame.transform.scale(
-    pygame.image.load(os.path.join("assets/img", "menu2.png")), (WINDOW_WIDTH, WINDOW_HEIGHT)
-)
+menu_background = pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "menu2.png")), (WINDOW_WIDTH, WINDOW_HEIGHT))
 one_player_img = pygame.image.load(os.path.join("assets/img", "1p.png"))
 two_player_img = pygame.image.load(os.path.join("assets/img", "2p.png"))
 one_player_img = pygame.transform.scale(one_player_img, (150, 50))
 two_player_img = pygame.transform.scale(two_player_img, (150, 50))
-
 one_player_rect = one_player_img.get_rect(center=(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
 two_player_rect = two_player_img.get_rect(center=(WINDOW_WIDTH // 2 + 100, WINDOW_HEIGHT // 2))
 
@@ -121,11 +101,10 @@ def draw_start_menu():
     screen.blit(title, title_rect)
     pygame.display.flip()
 
-#  HÀM VẼ TRONG GAME 
 def draw_board(screen, selected_square, tile_size, white, black, highlight, offset=(0,0)):
     for row in range(8):
         for col in range(8):
-            color = white if (row + col) % 2 == 0 else black
+            color = white if (row+col) % 2 == 0 else black
             pygame.draw.rect(screen, color, (offset[0] + col * tile_size, offset[1] + row * tile_size, tile_size, tile_size))
     if selected_square:
         pygame.draw.rect(screen, highlight, (offset[0] + selected_square[1] * tile_size, offset[1] + selected_square[0] * tile_size, tile_size, tile_size), 3)
@@ -156,7 +135,6 @@ def highlight_possible_moves(screen, board, selected_square, color, offset=(0,0)
                 pygame.draw.rect(screen, color, (offset[0] + col * TILE_SIZE, offset[1] + row * TILE_SIZE, TILE_SIZE, TILE_SIZE), 3)
 
 def draw_top_bar(screen):
-    # Vẽ thanh bar chứa các icon: hamburger, undo, redo
     pygame.draw.rect(screen, MENU_BG, (0, 0, WINDOW_WIDTH, TOP_MARGIN))
     rects = []
     for i, key in enumerate(icons):
@@ -169,49 +147,37 @@ def draw_top_bar(screen):
     return rects
 
 def draw_pause_menu(screen):
-    # Pause menu có các nút sắp xếp dọc: Resume, Newgame, Home, Exit
     overlay = pygame.Surface((WINDOW_WIDTH, BOARD_SIZE))
     overlay.set_alpha(200)
     overlay.fill(MENU_BG)
     screen.blit(overlay, (0, TOP_MARGIN))
-    
     button_width = 200
     button_height = 50
     gap = 20
     total_height = button_height * 4 + gap * 3
     start_y = TOP_MARGIN + (BOARD_SIZE - total_height) // 2
     start_x = (WINDOW_WIDTH - button_width) // 2
-    
     buttons = {
         "resume": pygame.Rect(start_x, start_y, button_width, button_height),
         "newgame": pygame.Rect(start_x, start_y + button_height + gap, button_width, button_height),
         "home": pygame.Rect(start_x, start_y + 2 * (button_height + gap), button_width, button_height),
         "exit": pygame.Rect(start_x, start_y + 3 * (button_height + gap), button_width, button_height)
     }
-    
     for key, rect in buttons.items():
-        pygame.draw.rect(screen, (200, 200, 200), rect)
-        label = font.render(key.capitalize(), True, (0, 0, 0))
+        pygame.draw.rect(screen, (200,200,200), rect)
+        label = font.render(key.capitalize(), True, (0,0,0))
         label_rect = label.get_rect(center=rect.center)
         screen.blit(label, label_rect)
     return buttons
 
 def draw_confirmation_dialog(action):
-    # Vẽ hộp xác nhận với overlay
     overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
     overlay.set_alpha(180)
-    overlay.fill((50, 50, 50))
-    screen.blit(overlay, (0, 0))
-
+    overlay.fill((50,50,50))
+    screen.blit(overlay, (0,0))
     box_width, box_height = 500, 200
-    box_rect = pygame.Rect(
-        (WINDOW_WIDTH - box_width) // 2, 
-        (WINDOW_HEIGHT - box_height) // 2, 
-        box_width, box_height
-    )
-    pygame.draw.rect(screen, (200, 200, 200), box_rect)
-
-    
+    box_rect = pygame.Rect((WINDOW_WIDTH - box_width) // 2, (WINDOW_HEIGHT - box_height) // 2, box_width, box_height)
+    pygame.draw.rect(screen, (200,200,200), box_rect)
     if action == "exit":
         prompt = "Are you sure you want to exit?"
     elif action == "newgame":
@@ -220,22 +186,18 @@ def draw_confirmation_dialog(action):
         prompt = "Are you sure you want to go home?"
     else:
         prompt = "Xác nhận?"
-    prompt_surf = font.render(prompt, True, (0, 0, 0))
-    prompt_rect = prompt_surf.get_rect(center=(WINDOW_WIDTH // 2, box_rect.y + 40))
+    prompt_surf = font.render(prompt, True, (0,0,0))
+    prompt_rect = prompt_surf.get_rect(center=(WINDOW_WIDTH//2, box_rect.y+40))
     screen.blit(prompt_surf, prompt_rect)
-    
-    # Vẽ nút Yes và No
     btn_width, btn_height = 100, 40
-    yes_rect = pygame.Rect(box_rect.x + 30, box_rect.y + box_height - 60, btn_width, btn_height)
-    no_rect = pygame.Rect(box_rect.x + box_width - 130, box_rect.y + box_height - 60, btn_width, btn_height)
-    
-    pygame.draw.rect(screen, (150, 150, 150), yes_rect)
-    pygame.draw.rect(screen, (150, 150, 150), no_rect)
-    yes_surf = font.render("Yes", True, (0, 0, 0))
-    no_surf = font.render("No", True, (0, 0, 0))
+    yes_rect = pygame.Rect(box_rect.x+30, box_rect.y+box_height-60, btn_width, btn_height)
+    no_rect = pygame.Rect(box_rect.x+box_width-130, box_rect.y+box_height-60, btn_width, btn_height)
+    pygame.draw.rect(screen, (150,150,150), yes_rect)
+    pygame.draw.rect(screen, (150,150,150), no_rect)
+    yes_surf = font.render("Yes", True, (0,0,0))
+    no_surf = font.render("No", True, (0,0,0))
     screen.blit(yes_surf, yes_surf.get_rect(center=yes_rect.center))
     screen.blit(no_surf, no_surf.get_rect(center=no_rect.center))
-    
     return yes_rect, no_rect
 
 def highlight_king_in_check():
@@ -260,13 +222,13 @@ def draw_victory_overlay():
         if win_img:
             overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
             overlay.set_alpha(150)
-            overlay.fill((0, 0, 0))
-            screen.blit(overlay, (0, 0))
-            img_rect = win_img.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 30))
+            overlay.fill((0,0,0))
+            screen.blit(overlay, (0,0))
+            img_rect = win_img.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-30))
             screen.blit(win_img, img_rect)
             msg = "Press any key to play again"
-            msg_surf = font.render(msg, True, (255, 255, 255))
-            msg_rect = msg_surf.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + img_rect.height // 2))
+            msg_surf = font.render(msg, True, (255,255,255))
+            msg_rect = msg_surf.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2+img_rect.height//2))
             screen.blit(msg_surf, msg_rect)
             pygame.display.flip()
 
@@ -274,7 +236,6 @@ def select_or_move_piece(row, col):
     global selected_square
     clicked_sq_name = square_name_from_pos(row, col)
     clicked_piece = board.piece_at(chess.parse_square(clicked_sq_name))
-
     if selected_square is None:
         if clicked_piece and ((board.turn and clicked_piece.color == chess.WHITE) or (not board.turn and clicked_piece.color == chess.BLACK)):
             selected_square = (row, col)
@@ -287,14 +248,12 @@ def select_or_move_piece(row, col):
             if move in board.legal_moves:
                 is_capture = board.is_capture(move)
                 board.push(move)
-
                 if board.is_check():
                     play_sound_checkmate()
                 elif is_capture:
                     play_sound_capture()
                 else:
                     play_sound_move()
-
                 selected_square = None
             else:
                 print("Nước đi không hợp lệ!")
@@ -303,30 +262,40 @@ def select_or_move_piece(row, col):
         except chess.InvalidMoveError:
             print("Invalid move UCI:", move_uci)
 
-
-#  MAIN LOOP (STATE MACHINE) 
-state = "start_menu"  # Các trạng thái: "start_menu" và "game"
+state = "start_menu"  # "start_menu" hoặc "game"
 running = True
-
-# Biến xác nhận (confirm): None hoặc action cần xác nhận ("exit", "newgame", "home")
 confirm_action = None
+undone_moves = []
+selected_square = None
+menu_music_playing = False
 
 while running:
-    #  START MENU 
     if state == "start_menu":
         if not menu_music_playing:
             play_menu_music()
             menu_music_playing = True
-
         draw_start_menu()
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 pos = pygame.mouse.get_pos()
+                # Xử lý chế độ 1 người: load mô hình AI và thiết lập các biến cần thiết
                 if one_player_rect.collidepoint(pos):
-                    print("Chế độ 1 người chơi chưa được xử lý.")
+                    from ai_engine import ChessAI
+                    ai_model = ChessAI()
+                    try:
+                        ai_model.load_state_dict(torch.load(WEIGHTS_PATH, map_location="cpu"))
+                    except Exception as e:
+                        print("Không tìm thấy trọng số đã train. Huấn luyện mô hình trước hoặc kiểm tra đường dẫn.")
+                    ai_model.eval()
+                    board.reset()
+                    selected_square = None
+                    undone_moves = []
+                    one_player_mode = True
+                    human_color = chess.WHITE   # Người chơi là trắng
+                    ai_color = chess.BLACK      # AI là đen
+                    state = "game"
                 elif two_player_rect.collidepoint(pos):
                     pygame.mixer.music.stop()
                     menu_music_playing = False
@@ -335,22 +304,17 @@ while running:
                     undone_moves = []
                     state = "game"
         pygame.display.flip()
-    
-    #  GAME LOOP 
+
     elif state == "game":
         pause_menu_active = False
         game_over = False
         while state == "game" and running:
-            # Nếu chưa kích hoạt hộp xác nhận thì xử lý bình thường
             if confirm_action is None:
                 if board.is_game_over() and not game_over:
                     game_over = True
                     outcome = board.outcome()
                     if outcome is not None:
-                        if outcome.winner is True:
-                            play_sound_finish()
-                        elif outcome.winner is False:
-                            play_sound_finish()    
+                        play_sound_finish()
                 if game_over:
                     draw_board(screen, None, TILE_SIZE, WHITE, BLACK, HIGHLIGHT, offset=(0, TOP_MARGIN))
                     draw_pieces(screen, board, pieces_img, offset=(0, TOP_MARGIN))
@@ -371,28 +335,20 @@ while running:
                 highlight_possible_moves(screen, board, selected_square, HIGHLIGHT, offset=(0, TOP_MARGIN))
                 draw_pieces(screen, board, pieces_img, offset=(0, TOP_MARGIN))
                 highlight_king_in_check()
-
                 if pause_menu_active:
                     pause_buttons = draw_pause_menu(screen)
-                
                 pygame.display.flip()
-
-            # Nếu có hộp xác nhận đang hiển thị, vẽ nó lên (trên cùng)
             else:
                 yes_rect, no_rect = draw_confirmation_dialog(confirm_action)
                 pygame.display.flip()
-            
-            # Xử lý sự kiện
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                     state = ""
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     pos = pygame.mouse.get_pos()
-                    
-                    # Nếu đang hiển thị hộp xác nhận
                     if confirm_action is not None:
-                        # Kiểm tra click vào nút Yes/No trong hộp xác nhận
                         if yes_rect.collidepoint(pos):
                             if confirm_action == "exit":
                                 running = False
@@ -401,7 +357,7 @@ while running:
                                 board.reset()
                                 undone_moves.clear()
                                 selected_square = None
-                                pause_menu_active = False  # Tắt pause menu khi bắt đầu ván mới
+                                pause_menu_active = False
                                 confirm_action = None
                             elif confirm_action == "home":
                                 state = "start_menu"
@@ -411,7 +367,6 @@ while running:
                             confirm_action = None
                         continue
 
-                    # Nếu chưa kích hoạt hộp xác nhận
                     if pause_menu_active:
                         for key, rect in pause_buttons.items():
                             if rect.collidepoint(pos):
@@ -442,6 +397,20 @@ while running:
                         undone_moves.append(board.pop())
                     elif event.key == pygame.K_x and undone_moves:
                         board.push(undone_moves.pop())
+
+            # Tích hợp nước đi AI cho chế độ 1 người chơi
+            if one_player_mode and board.turn == ai_color:
+                pygame.time.delay(500)
+                predicted_index = predict_move(board, ai_model)
+                predicted_uci = all_moves[predicted_index]
+                move = chess.Move.from_uci(predicted_uci)
+                if move in board.legal_moves:
+                    board.push(move)
+                    play_sound_move()
+                else:
+                    legal = list(board.legal_moves)
+                    board.push(legal[0])
+                continue
 
 pygame.quit()
 sys.exit()
