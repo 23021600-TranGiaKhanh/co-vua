@@ -5,7 +5,6 @@ import chess
 import torch
 
 from ai_engine import ChessAI, predict_move, all_moves
-from config import TRAINING_PGN_PATH, WEIGHTS_PATH  # Sử dụng biến từ config.py
 
 pygame.init()
 TILE_SIZE = 80
