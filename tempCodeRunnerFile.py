@@ -1,3 +1,4 @@
 
-            screen.blit(msg_surf, msg_rect)
-            pygame.display.flip()
+                    undone_moves = []
+
+                    one_player_mode = False

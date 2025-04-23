@@ -384,6 +384,7 @@ while running:
                 pos = pygame.mouse.get_pos()
                 # Xử lý chế độ 1 người: load mô hình AI và thiết lập các biến cần thiết
                 if one_player_rect.collidepoint(pos):
+
                     engine = EngineHandler(ENGINE_PATH, WEIGHTS_PATH)
                     board.reset()
                     selected_square = None
