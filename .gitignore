@@ -1,1 +1,4 @@
 config.py
+# ignore CUDA dlls
+Lc0/cublas64_11.dll
+Lc0/cublasLt64_11.dll

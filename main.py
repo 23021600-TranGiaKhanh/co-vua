@@ -4,7 +4,19 @@ import os
 import chess
 import torch
 
-from ai_engine import ChessAI, predict_move, all_moves
+from config import ENGINE_PATH, WEIGHTS_PATH
+
+# Lấy thư mục chứa main.py
+BASE_DIR = os.path.dirname(__file__)
+
+# Thêm thư mục chứa uci.py vào sys.path
+sys.path.insert(0, os.path.join(
+    BASE_DIR,
+    'maia-chess-master',
+    'move_prediction',
+    'maia_chess_backend'
+))
+from uci import EngineHandler
 
 pygame.init()
 TILE_SIZE = 80
@@ -29,7 +41,8 @@ board = chess.Board()
 one_player_mode = False
 human_color = None
 ai_color = None
-ai_model = None
+promotion_pending = None   # tuple (from_sq, to_sq)
+promotion_buttons = {}     # maps promo char to button Rect
 
 def load_piece_images(path):
     images = {}
@@ -231,35 +244,107 @@ def draw_victory_overlay():
             screen.blit(msg_surf, msg_rect)
             pygame.display.flip()
 
+# --- Draw promotion menu with piece images from pieces_img ---
+def draw_promotion_menu(screen, font):
+    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+    overlay.set_alpha(200)
+    overlay.fill((50, 50, 50))
+    screen.blit(overlay, (0, 0))
+
+    btn_w, btn_h = 80, 80
+    gap = 20
+    total_width = btn_w * 4 + gap * 3
+    start_x = (WINDOW_WIDTH - total_width) // 2
+    y = (WINDOW_HEIGHT - btn_h) // 2
+
+    # Determine color of pawn being promoted
+    from_sq, to_sq = promotion_pending
+    pawn = board.piece_at(chess.parse_square(from_sq))
+    is_white = (pawn.color == chess.WHITE)
+
+    promotion_buttons.clear()
+    for i, p in enumerate(['q', 'r', 'b', 'n']):
+        rect = pygame.Rect(start_x + i * (btn_w + gap), y, btn_w, btn_h)
+        pygame.draw.rect(screen, (200, 200, 200), rect)
+        # Choose correct image key: uppercase for white, lowercase for black
+        key = p.upper() if is_white else p
+        # Scale from pieces_img (sized TILE_SIZE) to button size
+        img = pygame.transform.scale(pieces_img[key], (btn_w, btn_h))
+        screen.blit(img, img.get_rect(center=rect.center))
+        promotion_buttons[p] = rect
+
+    pygame.display.flip()
+
+# --- Update select_or_move_piece to handle promotion ---
 def select_or_move_piece(row, col):
-    global selected_square
-    clicked_sq_name = square_name_from_pos(row, col)
-    clicked_piece = board.piece_at(chess.parse_square(clicked_sq_name))
+    global selected_square, promotion_pending
+
+    sq = square_name_from_pos(row, col)
+    piece = board.piece_at(chess.parse_square(sq))
+
+    # Nếu click lại ô đã chọn, hủy selection
+    if selected_square is not None and (row, col) == selected_square:
+        selected_square = None
+        return
+
+    # Chưa chọn ô từ → chọn ô nếu có quân đúng màu
     if selected_square is None:
-        if clicked_piece and ((board.turn and clicked_piece.color == chess.WHITE) or (not board.turn and clicked_piece.color == chess.BLACK)):
+        if piece and ((board.turn and piece.color == chess.WHITE)
+                      or (not board.turn and piece.color == chess.BLACK)):
             selected_square = (row, col)
-        else:
-            print("Không có quân cờ ở ô này!")
+        return
+
+    # Đã chọn ô từ → xây UCI move
+    from_sq = square_name_from_pos(*selected_square)
+    to_sq   = sq
+    moved   = board.piece_at(chess.parse_square(from_sq))
+    promo   = ''
+    rank_to = chess.square_rank(chess.parse_square(to_sq))
+
+    # Xử lý promotion
+    if moved and moved.symbol().lower() == 'p' and (
+        (moved.color == chess.WHITE and rank_to == 7) or
+        (moved.color == chess.BLACK and rank_to == 0)
+    ):
+        # Hiện menu chọn promotion
+        promotion_pending = (from_sq, to_sq)
+        draw_promotion_menu(screen, font)
+        chosen = False
+        while not chosen:
+            for ev in pygame.event.get():
+                if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                    for key, rect in promotion_buttons.items():
+                        if rect.collidepoint(ev.pos):
+                            promo   = key
+                            chosen  = True
+        move_uci = from_sq + to_sq + promo
     else:
-        move_uci = square_name_from_pos(*selected_square) + clicked_sq_name
-        try:
-            move = chess.Move.from_uci(move_uci)
-            if move in board.legal_moves:
-                is_capture = board.is_capture(move)
-                board.push(move)
-                if board.is_check():
-                    play_sound_checkmate()
-                elif is_capture:
-                    play_sound_capture()
-                else:
-                    play_sound_move()
-                selected_square = None
-            else:
-                print("Nước đi không hợp lệ!")
-                if clicked_piece and ((board.turn and clicked_piece.color == chess.WHITE) or (not board.turn and clicked_piece.color == chess.BLACK)):
-                    selected_square = (row, col)
-        except chess.InvalidMoveError:
-            print("Invalid move UCI:", move_uci)
+        # Nếu click cùng ô hoặc không di chuyển đúng mục đích, hủy selection
+        if to_sq == from_sq:
+            selected_square = None
+            return
+        move_uci = from_sq + to_sq
+
+    # Thực thi nước đi
+    try:
+        move = chess.Move.from_uci(move_uci)
+    except ValueError:
+        print("Không parse được UCI:", move_uci)
+        selected_square = None
+        promotion_pending = None
+        return
+
+    if board.is_legal(move):
+        print("Đúng nước đi:", move_uci)
+        board.push(move)
+        # play_sound_move() hoặc play_sound_capture() tuỳ loại move
+    else:
+        print("Invalid move:", move_uci)
+        # nếu cần debug thêm: print([m.uci() for m in board.legal_moves])
+
+    # Reset trạng thái
+    selected_square   = None
+    promotion_pending = None
 
 state = "start_menu"  # "start_menu" hoặc "game"
 running = True
@@ -269,6 +354,24 @@ selected_square = None
 menu_music_playing = False
 
 while running:
+    # Nếu đang chờ chọn phong quân
+    if promotion_pending:
+        draw_promotion_menu(screen)
+
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for p, rect in promotion_buttons.items():
+                    if rect.collidepoint(event.pos):
+                        # Xây move cuối cùng với ký tự phong
+                        from_sq, to_sq = promotion_pending
+                        move_uci = from_sq + to_sq + p
+                        move = chess.Move.from_uci(move_uci)
+                        if move in board.legal_moves:
+                            board.push(move)
+                        promotion_pending = None
+                        selected_square = None
+        continue  # quay lại loop, không xử lý UI khác khi đang chọn
+
     if state == "start_menu":
         if not menu_music_playing:
             play_menu_music()
@@ -281,28 +384,30 @@ while running:
                 pos = pygame.mouse.get_pos()
                 # Xử lý chế độ 1 người: load mô hình AI và thiết lập các biến cần thiết
                 if one_player_rect.collidepoint(pos):
-                    from ai_engine import ChessAI
-                    ai_model = ChessAI()
-                    try:
-                        ai_model.load_state_dict(torch.load(WEIGHTS_PATH, map_location="cpu"))
-                    except Exception as e:
-                        print("Không tìm thấy trọng số đã train. Huấn luyện mô hình trước hoặc kiểm tra đường dẫn.")
-                    ai_model.eval()
+                    engine = EngineHandler(ENGINE_PATH, WEIGHTS_PATH)
                     board.reset()
                     selected_square = None
                     undone_moves = []
                     one_player_mode = True
-                    human_color = chess.WHITE   # Người chơi là trắng
-                    ai_color = chess.BLACK      # AI là đen
+                    human_color = chess.WHITE
+                    ai_color = chess.BLACK
                     state = "game"
+                # Xử lý chế độ 2 người: thiết lập các biến cần thiết
                 elif two_player_rect.collidepoint(pos):
-                    pygame.mixer.music.stop()
-                    menu_music_playing = False
                     board.reset()
                     selected_square = None
                     undone_moves = []
+
+                    one_player_mode = False
+                    human_color     = None
+                    ai_color        = None
+                    pygame.display.flip()
+                    try:
+                        engine.quit()
+                    except NameError:
+                        pass
+
                     state = "game"
-        pygame.display.flip()
 
     elif state == "game":
         pause_menu_active = False
@@ -400,15 +505,10 @@ while running:
             # Tích hợp nước đi AI cho chế độ 1 người chơi
             if one_player_mode and board.turn == ai_color:
                 pygame.time.delay(500)
-                predicted_index = predict_move(board, ai_model)
-                predicted_uci = all_moves[predicted_index]
-                move = chess.Move.from_uci(predicted_uci)
+                move = engine.get_best_move(board)
                 if move in board.legal_moves:
                     board.push(move)
                     play_sound_move()
-                else:
-                    legal = list(board.legal_moves)
-                    board.push(legal[0])
                 continue
 
 pygame.quit()

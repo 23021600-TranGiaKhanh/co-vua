@@ -1,59 +1,39 @@
-import chess.uci
+import chess.engine
+import os
 
-import collections
-import concurrent.futures
-import threading
-
-import re
-import os.path
-
-probRe = re.compile(r"\(P: +([^)]+)\)")
-
-
-class ProbInfoHandler(chess.uci.InfoHandler):
-    def __init__(self):
-        super().__init__()
-        self.info["probs"] = []
-
-    def on_go(self):
+class EngineHandler:
+    def __init__(self, engine_path, weights_path, threads=1):
         """
-        Notified when a *go* command is beeing sent.
-
-        Since information about the previous search is invalidated, the
-        dictionary with the current information will be cleared.
+        engine_path: đường dẫn tới UCI binary (ví dụ lc0.exe hoặc maia.exe)
+        weights_path: đường dẫn tới file .pb.gz chứa mô hình đã huấn luyện
+        threads: số luồng CPU/GPU cho engine
         """
-        with self.lock:
-            self.info.clear()
-            self.info["refutation"] = {}
-            self.info["currline"] = {}
-            self.info["pv"] = {}
-            self.info["score"] = {}
-            self.info["probs"] = []
+        # Chuẩn hóa đường dẫn
+        self.engine_path = os.path.normpath(engine_path)
+        self.weights_path = os.path.normpath(weights_path)
+        
+        # Khởi UCI engine, truyền CLI args cho weights và threads
+        cmd = [
+            self.engine_path,
+            f"--threads={threads}",
+            f"--weights={self.weights_path}"
+        ]
+        self.engine = chess.engine.SimpleEngine.popen_uci(cmd)
 
-    def string(self, string):
-        """Receives a string the engine wants to display."""
-        prob = re.search(probRe, string).group(1)
-        self.info["probs"].append(string)
+    def get_best_move(self, board, thinking_time=0.2, nodes=None):
+        """
+        Trả về nước đi tốt nhất cho board hiện tại.
+        - thinking_time: thời gian suy tính (giây)
+        - nodes: số nút MCTS (nếu engine hỗ trợ)
+        """
+        try:
+            limit = chess.engine.Limit(time=thinking_time, nodes=nodes)
+            result = self.engine.play(board, limit)
+            return result.move
+        except Exception as e:
+            print("AI error:", e)
+            return None
 
-class EngineHandler(object):
-    def __init__(self, engine, weights, threads = 2):
-        self.enginePath = os.path.normpath(engine)
-        self.weightsPath = os.path.normpath(weights)
-
-        self.engine = chess.uci.popen_engine([self.enginePath, "--verbose-move-stats", f"--threads={threads}", f"--weights={self.weightsPath}"])
-
-        self.info_handler = ProbInfoHandler()
-        self.engine.info_handlers.append(self.info_handler)
-
-        self.engine.uci()
-        self.engine.isready()
-
-    def __repr__(self):
-        return f"<EngineHandler {self.engine.name} {self.weightsPath}>"
-
-    def getBoardProbs(self, board, movetime = 1000, nodes = 1000):
-        self.engine.ucinewgame()
-        self.engine.position(board)
-        moves = self.engine.go(movetime = movetime, nodes = nodes)
-        probs = self.info_handler.info['probs']
-        return moves, probs
+    def quit(self):
+        """Đóng process engine"""
+        self.engine.quit()
