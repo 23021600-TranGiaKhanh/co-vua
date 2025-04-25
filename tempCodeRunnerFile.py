@@ -448,6 +448,14 @@ while running:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    one_player_mode = False
+                    human_color     = None
+                    ai_color        = None
+                    pygame.display.flip()
+                    try:
+                        engine.quit()
+                    except NameError:
+                        pass
                     running = False
                     state = ""
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -502,6 +510,7 @@ while running:
                             board.push(undone_moves.pop())
                     elif pos[1] > TOP_MARGIN and not pause_menu_active:
                         row, col = get_square_under_mouse(pos, offset=(0, TOP_MARGIN))
+                        play_sound_capture()
                         select_or_move_piece(row, col)
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:

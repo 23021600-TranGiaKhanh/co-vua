@@ -4,7 +4,27 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1c981364-985e-4848-8c5c-f3e4d44a6b02" name="Changes" comment="" />
+    <list default="true" id="1c981364-985e-4848-8c5c-f3e4d44a6b02" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/co-vua.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ai.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/791556.pb.gz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/COPYING" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/DNNL-LICENSE" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/DNNL-THIRD-PARTY-PROGRAMS" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/dnnl.dll" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/lc0.exe" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/mimalloc-LICENSE" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/mimalloc-override.dll" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/mimalloc-readme.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lc0/mimalloc-redirect.dll" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/weights/t3-512x15x16h-distill-swa-2767500.pb.gz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tempCodeRunnerFile.py" beforeDir="false" afterPath="$PROJECT_DIR$/tempCodeRunnerFile.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -20,6 +40,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "23021600-TranGiaKhanh"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/23021600-TranGiaKhanh/co-vua.git",
+    "accountId": "d1864ecc-a911-4beb-8d28-34ce4bc18e86"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
@@ -38,8 +70,9 @@
     "Python.tempCodeRunnerFile.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "Merging main",
     "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -52,8 +85,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-PY-243.23654.177" />
-        <option value="bundled-python-sdk-91d3a02ef49d-43b77aa2d136-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.23654.177" />
+        <option value="bundled-jdk-9823dce3aa75-b114ca120d71-intellij.indexing.shared.core-IU-242.21829.142" />
+        <option value="bundled-js-predefined-d6986cc7102b-7c0b70fcd90d-JavaScript-IU-242.21829.142" />
       </set>
     </attachedChunks>
   </component>
@@ -80,6 +113,7 @@
       <workItem from="1745466602333" duration="598000" />
       <workItem from="1745474412866" duration="575000" />
       <workItem from="1745474997114" duration="10596000" />
+      <workItem from="1745552919288" duration="273000" />
     </task>
     <servers />
   </component>
