@@ -244,7 +244,6 @@ def draw_victory_overlay():
             screen.blit(msg_surf, msg_rect)
             pygame.display.flip()
 
-# --- Draw promotion menu with piece images from pieces_img ---
 def draw_promotion_menu(screen, font):
     overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
     overlay.set_alpha(200)
@@ -275,7 +274,6 @@ def draw_promotion_menu(screen, font):
 
     pygame.display.flip()
 
-# --- Update select_or_move_piece to handle promotion ---
 def select_or_move_piece(row, col):
     global selected_square, promotion_pending
 
@@ -328,6 +326,7 @@ def select_or_move_piece(row, col):
     # Thực thi nước đi
     try:
         move = chess.Move.from_uci(move_uci)
+        play_sound_move()
     except ValueError:
         print("Không parse được UCI:", move_uci)
         selected_square = None
@@ -341,7 +340,7 @@ def select_or_move_piece(row, col):
     else:
         print("Invalid move:", move_uci)
         # nếu cần debug thêm: print([m.uci() for m in board.legal_moves])
-
+    
     # Reset trạng thái
     selected_square   = None
     promotion_pending = None
@@ -449,6 +448,14 @@ while running:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    one_player_mode = False
+                    human_color     = None
+                    ai_color        = None
+                    pygame.display.flip()
+                    try:
+                        engine.quit()
+                    except NameError:
+                        pass
                     running = False
                     state = ""
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -456,6 +463,14 @@ while running:
                     if confirm_action is not None:
                         if yes_rect.collidepoint(pos):
                             if confirm_action == "exit":
+                                one_player_mode = False
+                                human_color     = None
+                                ai_color        = None
+                                pygame.display.flip()
+                                try:
+                                    engine.quit()
+                                except NameError:
+                                    pass
                                 running = False
                                 state = ""
                             elif confirm_action == "newgame":
@@ -466,6 +481,7 @@ while running:
                                 confirm_action = None
                             elif confirm_action == "home":
                                 state = "start_menu"
+                                play_menu_music()
                                 pause_menu_active = False
                                 confirm_action = None
                         elif no_rect.collidepoint(pos):
@@ -494,6 +510,7 @@ while running:
                             board.push(undone_moves.pop())
                     elif pos[1] > TOP_MARGIN and not pause_menu_active:
                         row, col = get_square_under_mouse(pos, offset=(0, TOP_MARGIN))
+                        play_sound_capture()
                         select_or_move_piece(row, col)
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -509,7 +526,6 @@ while running:
                 move = engine.get_best_move(board)
                 if move in board.legal_moves:
                     board.push(move)
-                    play_sound_move()
                 continue
 
 pygame.quit()
