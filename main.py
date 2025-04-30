@@ -4,12 +4,9 @@ import os
 import chess
 import torch
 
-from config import ENGINE_PATH, WEIGHTS_PATH
-
 # Lấy thư mục chứa main.py
 BASE_DIR = os.path.dirname(__file__)
 
-# Thêm thư mục chứa uci.py vào sys.path
 sys.path.insert(0, os.path.join(
     BASE_DIR,
     'maia-chess-master',
@@ -17,6 +14,7 @@ sys.path.insert(0, os.path.join(
     'maia_chess_backend'
 ))
 from uci import EngineHandler
+from config import ENGINE_PATH, WEIGHTS_PATH
 
 pygame.init()
 TILE_SIZE = 80
@@ -70,6 +68,10 @@ victory_images = {
     "black": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "den_thang.png")), (300, 200)),
     "stalemate": pygame.transform.scale(pygame.image.load(os.path.join("assets/img", "stalemate.png")), (300, 200))
 }
+def play_sound_select():
+    pygame.mixer.music.load("assets/sound/sound_select.ogg")
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play()
 
 def play_sound_checkmate():
     pygame.mixer.music.load("assets/sound/sound_checkmate.ogg")
@@ -283,12 +285,12 @@ def select_or_move_piece(row, col):
     # Nếu click lại ô đã chọn, hủy selection
     if selected_square is not None and (row, col) == selected_square:
         selected_square = None
+        print("Hãy chọn nước đi phù hợp")
         return
 
     # Chưa chọn ô từ → chọn ô nếu có quân đúng màu
     if selected_square is None:
-        if piece and ((board.turn and piece.color == chess.WHITE)
-                      or (not board.turn and piece.color == chess.BLACK)):
+        if piece and piece.color == (chess.WHITE if board.turn else chess.BLACK):
             selected_square = (row, col)
         return
 
@@ -299,6 +301,8 @@ def select_or_move_piece(row, col):
     promo   = ''
     rank_to = chess.square_rank(chess.parse_square(to_sq))
 
+
+
     # Xử lý promotion
     if moved and moved.symbol().lower() == 'p' and (
         (moved.color == chess.WHITE and rank_to == 7) or
@@ -307,17 +311,18 @@ def select_or_move_piece(row, col):
         # Hiện menu chọn promotion
         promotion_pending = (from_sq, to_sq)
         draw_promotion_menu(screen, font)
-        chosen = False
-        while not chosen:
-            for ev in pygame.event.get():
-                if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                    for key, rect in promotion_buttons.items():
-                        if rect.collidepoint(ev.pos):
-                            promo   = key
-                            chosen  = True
+        while True:
+            ev = pygame.event.wait()
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                for key, rect in promotion_buttons.items():
+                    if rect.collidepoint(ev.pos):
+                        promo = key
+                        break
+                if promo:
+                    break
         move_uci = from_sq + to_sq + promo
     else:
-        # Nếu click cùng ô hoặc không di chuyển đúng mục đích, hủy selection
+        # Nếu click cùng ô hoặc không di chuyển đúng mục đích, hủy chọn
         if to_sq == from_sq:
             selected_square = None
             return
@@ -326,20 +331,24 @@ def select_or_move_piece(row, col):
     # Thực thi nước đi
     try:
         move = chess.Move.from_uci(move_uci)
-        play_sound_move()
     except ValueError:
         print("Không parse được UCI:", move_uci)
         selected_square = None
         promotion_pending = None
         return
-
-    if board.is_legal(move):
-        print("Đúng nước đi:", move_uci)
-        board.push(move)
-        # play_sound_move() hoặc play_sound_capture() tuỳ loại move
     else:
-        print("Invalid move:", move_uci)
-        # nếu cần debug thêm: print([m.uci() for m in board.legal_moves])
+        if board.is_legal(move):
+            # Kiểm tra xem đây có phải là nước ăn không
+            is_capture = board.is_capture(move)
+            board.push(move)
+            # Phát âm thanh phù hợp
+            if is_capture:
+                play_sound_capture()
+            else:
+                play_sound_move()
+        else:
+            print("nước đi không hợp lệ:", move_uci)
+            # nếu cần debug thêm: print([m.uci() for m in board.legal_moves])
     
     # Reset trạng thái
     selected_square   = None
@@ -460,6 +469,7 @@ while running:
                     state = ""
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     pos = pygame.mouse.get_pos()
+                    play_sound_select()
                     if confirm_action is not None:
                         if yes_rect.collidepoint(pos):
                             if confirm_action == "exit":
@@ -510,7 +520,6 @@ while running:
                             board.push(undone_moves.pop())
                     elif pos[1] > TOP_MARGIN and not pause_menu_active:
                         row, col = get_square_under_mouse(pos, offset=(0, TOP_MARGIN))
-                        play_sound_capture()
                         select_or_move_piece(row, col)
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
