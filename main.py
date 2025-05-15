@@ -4,15 +4,6 @@ import os
 import chess
 import torch
 
-# Lấy thư mục chứa main.py
-BASE_DIR = os.path.dirname(__file__)
-
-sys.path.insert(0, os.path.join(
-    BASE_DIR,
-    'maia-chess-master',
-    'move_prediction',
-    'maia_chess_backend'
-))
 from uci import EngineHandler
 from config import ENGINE_PATH, WEIGHTS_PATH
 
