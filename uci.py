@@ -1,18 +1,16 @@
 import chess.engine
 import os
 
+
 class EngineHandler:
-    def __init__(self, engine_path, weights_path, threads=1):
-        
+    def __init__(self, engine_path, threads=1):
         # Chuẩn hóa đường dẫn
         self.engine_path = os.path.normpath(engine_path)
-        self.weights_path = os.path.normpath(weights_path)
-        
-        # Khởi UCI engine, truyền CLI args cho weights và threads
+
+        # Khởi UCI engine, chỉ truyền threads
         cmd = [
             self.engine_path,
-            f"--threads={threads}",
-            f"--weights={self.weights_path}"
+            f"--threads={threads}"
         ]
         self.engine = chess.engine.SimpleEngine.popen_uci(cmd)
 

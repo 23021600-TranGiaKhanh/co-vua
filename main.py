@@ -5,14 +5,21 @@ import chess
 import torch
 
 from uci import EngineHandler
-from config import ENGINE_PATH, WEIGHTS_PATH
+from config import ENGINE_PATH
 
 pygame.init()
 TILE_SIZE = 80
 TOP_MARGIN = 50
 BOARD_SIZE = TILE_SIZE * 8
-WINDOW_WIDTH = BOARD_SIZE
+SIDE_PANEL_WIDTH = 200
+WINDOW_WIDTH = BOARD_SIZE + SIDE_PANEL_WIDTH
 WINDOW_HEIGHT = BOARD_SIZE + TOP_MARGIN
+
+MAX_HISTORY_LINES = 26
+
+PANEL_PADDING = 8
+
+history_font = pygame.font.SysFont("Consolas", 20)
 
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Chess Game")
@@ -236,6 +243,7 @@ def draw_victory_overlay():
             msg_surf = font.render(msg, True, (255,255,255))
             msg_rect = msg_surf.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2+img_rect.height//2))
             screen.blit(msg_surf, msg_rect)
+            draw_move_history(screen, board)
             pygame.display.flip()
 
 def draw_promotion_menu(screen, font):
@@ -266,7 +274,30 @@ def draw_promotion_menu(screen, font):
         screen.blit(img, img.get_rect(center=rect.center))
         promotion_buttons[p] = rect
 
+    draw_move_history(screen, board)
     pygame.display.flip()
+
+def draw_move_history(screen, board):
+    # vẽ nền panel
+    panel_rect = pygame.Rect(BOARD_SIZE, 0, SIDE_PANEL_WIDTH, WINDOW_HEIGHT)
+    pygame.draw.rect(screen, (240, 240, 240), panel_rect)
+
+    moves = board.move_stack
+    pair_count = (len(moves) + 1) // 2
+    first_line = max(pair_count - MAX_HISTORY_LINES, 0)
+    line_height = history_font.get_height() + 4
+
+    for line_idx in range(first_line, pair_count):
+        white_idx = line_idx * 2
+        white_move = moves[white_idx].uci()
+        black_move = moves[white_idx + 1].uci() if white_idx + 1 < len(moves) else ''
+
+        text = f"{line_idx+1:>2}. {white_move.ljust(7)}{black_move}"
+
+        surf = history_font.render(text, True, (0, 0, 0))
+        x = BOARD_SIZE + PANEL_PADDING
+        y = PANEL_PADDING + (line_idx - first_line) * line_height
+        screen.blit(surf, (x, y))
 
 def select_or_move_piece(row, col):
     global selected_square, promotion_pending
@@ -385,7 +416,7 @@ while running:
                 # Xử lý chế độ 1 người: load mô hình AI và thiết lập các biến cần thiết
                 if one_player_rect.collidepoint(pos):
 
-                    engine = EngineHandler(ENGINE_PATH, WEIGHTS_PATH)
+                    engine = EngineHandler(ENGINE_PATH)
                     board.reset()
                     selected_square = None
                     undone_moves = []
@@ -402,6 +433,7 @@ while running:
                     one_player_mode = False
                     human_color     = None
                     ai_color        = None
+                    draw_move_history(screen, board)
                     pygame.display.flip()
                     try:
                         engine.quit()
@@ -442,9 +474,11 @@ while running:
                 highlight_king_in_check()
                 if pause_menu_active:
                     pause_buttons = draw_pause_menu(screen)
+                draw_move_history(screen, board)
                 pygame.display.flip()
             else:
                 yes_rect, no_rect = draw_confirmation_dialog(confirm_action)
+                draw_move_history(screen, board)
                 pygame.display.flip()
 
             for event in pygame.event.get():
@@ -452,6 +486,7 @@ while running:
                     one_player_mode = False
                     human_color     = None
                     ai_color        = None
+                    draw_move_history(screen, board)
                     pygame.display.flip()
                     try:
                         engine.quit()
@@ -468,6 +503,7 @@ while running:
                                 one_player_mode = False
                                 human_color     = None
                                 ai_color        = None
+                                draw_move_history(screen, board)
                                 pygame.display.flip()
                                 try:
                                     engine.quit()
