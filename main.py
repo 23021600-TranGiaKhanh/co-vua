@@ -15,7 +15,7 @@ SIDE_PANEL_WIDTH = 200
 WINDOW_WIDTH = BOARD_SIZE + SIDE_PANEL_WIDTH
 WINDOW_HEIGHT = BOARD_SIZE + TOP_MARGIN
 
-MAX_HISTORY_LINES = 26
+MAX_HISTORY_LINES = 28
 
 PANEL_PADDING = 8
 
@@ -169,7 +169,7 @@ def draw_pause_menu(screen):
     gap = 20
     total_height = button_height * 4 + gap * 3
     start_y = TOP_MARGIN + (BOARD_SIZE - total_height) // 2
-    start_x = (WINDOW_WIDTH - button_width) // 2
+    start_x = (WINDOW_WIDTH - SIDE_PANEL_WIDTH - button_width) // 2
     buttons = {
         "resume": pygame.Rect(start_x, start_y, button_width, button_height),
         "newgame": pygame.Rect(start_x, start_y + button_height + gap, button_width, button_height),
@@ -184,12 +184,12 @@ def draw_pause_menu(screen):
     return buttons
 
 def draw_confirmation_dialog(action):
-    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+    overlay = pygame.Surface((WINDOW_WIDTH - SIDE_PANEL_WIDTH, WINDOW_HEIGHT))
     overlay.set_alpha(180)
     overlay.fill((50,50,50))
     screen.blit(overlay, (0,0))
     box_width, box_height = 500, 200
-    box_rect = pygame.Rect((WINDOW_WIDTH - box_width) // 2, (WINDOW_HEIGHT - box_height) // 2, box_width, box_height)
+    box_rect = pygame.Rect((WINDOW_WIDTH - SIDE_PANEL_WIDTH - box_width) // 2, (WINDOW_HEIGHT - box_height) // 2, box_width, box_height)
     pygame.draw.rect(screen, (200,200,200), box_rect)
     if action == "exit":
         prompt = "Are you sure you want to exit?"
@@ -200,7 +200,7 @@ def draw_confirmation_dialog(action):
     else:
         prompt = "Xác nhận?"
     prompt_surf = font.render(prompt, True, (0,0,0))
-    prompt_rect = prompt_surf.get_rect(center=(WINDOW_WIDTH//2, box_rect.y+40))
+    prompt_rect = prompt_surf.get_rect(center=((WINDOW_WIDTH - SIDE_PANEL_WIDTH)//2, box_rect.y+40))
     screen.blit(prompt_surf, prompt_rect)
     btn_width, btn_height = 100, 40
     yes_rect = pygame.Rect(box_rect.x+30, box_rect.y+box_height-60, btn_width, btn_height)
@@ -233,11 +233,11 @@ def draw_victory_overlay():
         else:
             win_img = None
         if win_img:
-            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            overlay = pygame.Surface((WINDOW_WIDTH - SIDE_PANEL_WIDTH, WINDOW_HEIGHT))
             overlay.set_alpha(150)
             overlay.fill((0,0,0))
             screen.blit(overlay, (0,0))
-            img_rect = win_img.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-30))
+            img_rect = win_img.get_rect(center=((WINDOW_WIDTH - SIDE_PANEL_WIDTH)//2, WINDOW_HEIGHT//2-30))
             screen.blit(win_img, img_rect)
             msg = "Press any key to play again"
             msg_surf = font.render(msg, True, (255,255,255))
@@ -247,7 +247,7 @@ def draw_victory_overlay():
             pygame.display.flip()
 
 def draw_promotion_menu(screen, font):
-    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+    overlay = pygame.Surface((WINDOW_WIDTH - SIDE_PANEL_WIDTH, WINDOW_HEIGHT))
     overlay.set_alpha(200)
     overlay.fill((50, 50, 50))
     screen.blit(overlay, (0, 0))
@@ -255,7 +255,7 @@ def draw_promotion_menu(screen, font):
     btn_w, btn_h = 80, 80
     gap = 20
     total_width = btn_w * 4 + gap * 3
-    start_x = (WINDOW_WIDTH - total_width) // 2
+    start_x = (WINDOW_WIDTH - SIDE_PANEL_WIDTH - total_width) // 2
     y = (WINDOW_HEIGHT - btn_h) // 2
 
     # Determine color of pawn being promoted
@@ -323,8 +323,6 @@ def select_or_move_piece(row, col):
     moved   = board.piece_at(chess.parse_square(from_sq))
     promo   = ''
     rank_to = chess.square_rank(chess.parse_square(to_sq))
-
-
 
     # Xử lý promotion
     if moved and moved.symbol().lower() == 'p' and (
