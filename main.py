@@ -32,6 +32,7 @@ human_color = None
 ai_color = None
 promotion_pending = None   # tuple (from_sq, to_sq)
 promotion_buttons = {}     # maps promo char to button Rect
+skip_ai_turn = False  # <- Dùng để ngăn AI đi sau khi undo
 
 def load_piece_images(path):
     images = {}
@@ -507,8 +508,16 @@ while running:
                             pause_menu_active = not pause_menu_active
                         elif icon_rects[1].collidepoint(pos) and board.move_stack:
                             undone_moves.append(board.pop())
+                            if one_player_mode:
+                                undone_moves.append(board.pop())  # undo AI
+                            skip_ai_turn = True
+
                         elif icon_rects[2].collidepoint(pos) and undone_moves:
-                            board.push(undone_moves.pop())
+                            board.push(undone_moves.pop())  # redo nước người chơi
+                            if one_player_mode and undone_moves:
+                                board.push(undone_moves.pop())  # redo nước AI
+                            skip_ai_turn = True
+
                     elif pos[1] > TOP_MARGIN and not pause_menu_active:
                         row, col = get_square_under_mouse(pos, offset=(0, TOP_MARGIN))
                         select_or_move_piece(row, col)
@@ -517,16 +526,24 @@ while running:
                         pause_menu_active = not pause_menu_active
                     elif event.key == pygame.K_z and board.move_stack:
                         undone_moves.append(board.pop())
+                        if one_player_mode:
+                            undone_moves.append(board.pop())  # undo AI
+                        skip_ai_turn = True
+
                     elif event.key == pygame.K_x and undone_moves:
                         board.push(undone_moves.pop())
+                        if one_player_mode and undone_moves:
+                            board.push(undone_moves.pop())
+                        skip_ai_turn = True
 
             # Tích hợp nước đi AI cho chế độ 1 người chơi
-            if one_player_mode and board.turn == ai_color:
+            if one_player_mode and board.turn == ai_color and not skip_ai_turn:
                 pygame.time.delay(500)
                 move = engine.get_best_move(board)
                 if move in board.legal_moves:
                     board.push(move)
-                continue
+
+            skip_ai_turn = False
 
 pygame.quit()
 sys.exit()
