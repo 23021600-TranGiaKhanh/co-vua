@@ -11,7 +11,7 @@ https://www.canva.com/design/DAGni0Li6fU/K-1VTWUkTA82XfuLhu80VA/edit?fbclid=IwZX
 
 ---
 
-## 🔎 Mô tả dự án
+## Mô tả dự án
 
 - **Giao diện**: Bàn cờ 8×8, thanh bên (history nước đi, nút New Game/Undo/Redo/Home/Exit).
 - **Chế độ chơi**:  
@@ -26,17 +26,23 @@ https://www.canva.com/design/DAGni0Li6fU/K-1VTWUkTA82XfuLhu80VA/edit?fbclid=IwZX
 
 ---
 
-## ⚙️ Yêu cầu & Cài đặt
+## Yêu cầu & Cài đặt
 
 1. **Yêu cầu hệ thống**  
    - Python ≥ 3.8  
-   - Trình biên dịch C++ (g++/clang++ hỗ trợ C++17)  
-   - Windows / Linux (có thể cần điều chỉnh `ENGINE_PATH`)
 
 2. **Cài đặt engine C++**  
-   ```bash
-   cd engine
-   make
+   - Cần điều chỉnh `ENGINE_PATH` trong file config.py theo định dạng "Đường_dẫn_tới_dự_án\engine\myengine.exe"
+
+---
+
+## Khởi động trò chơi
+cách 1. Chạy trực tiếp file main.py thông qua các IDE hỗ trợ python 
+cách 2. b1: mở terminal có trên máy
+        b2: ở terminal, di chuyển tới thư mục chứa dự án bằng lệnh: cd "đường dẫn tới thư mục dự án"
+        b3: gõ lệnh: python main.py
+
+---
 
 ## Đóng góp thành viên:
 - khánh, huy anh: backend + engine
