@@ -39,9 +39,9 @@ https://www.canva.com/design/DAGni0Li6fU/K-1VTWUkTA82XfuLhu80VA/edit?fbclid=IwZX
 ## Khởi động trò chơi
   - cách 1. Chạy trực tiếp file main.py thông qua các IDE hỗ trợ python 
   - cách 2. 
-    -b1: mở terminal có trên máy
-    -b2: ở terminal, di chuyển tới thư mục chứa dự án bằng lệnh: cd "đường dẫn tới thư mục dự án"
-    -b3: gõ lệnh: python main.py
+    - b1: mở terminal có trên máy
+    - b2: ở terminal, di chuyển tới thư mục chứa dự án bằng lệnh: cd "đường dẫn tới thư mục dự án"
+    - b3: gõ lệnh: python main.py
 
 ---
 
