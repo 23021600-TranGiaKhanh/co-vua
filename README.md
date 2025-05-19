@@ -23,6 +23,8 @@ https://www.canva.com/design/DAGni0Li6fU/K-1VTWUkTA82XfuLhu80VA/edit?fbclid=IwZX
   - Hiệu ứng âm thanh khi di chuyển, ăn quân, kết thúc ván.  
   - Highlight khi chiếu, thông báo chiếu hết/hoà.  
   - Tùy chỉnh thời gian suy nghĩ của AI
+- **elo**:
+	- đánh thắng bot elo 2700 trong chess.com với tỷ lệ >85%
 
 ---
 
